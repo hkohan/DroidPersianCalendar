@@ -1,5 +1,6 @@
 import com.android.build.gradle.internal.api.BaseVariantOutputImpl
 import org.jetbrains.kotlin.config.KotlinCompilerVersion
+import java.util.*
 
 plugins {
     id("com.android.application")
@@ -48,6 +49,16 @@ android {
             ).map { it.runCommand()?.trim() }.joinToString("-") +
                     (if ("git status -s".runCommand()?.trim()?.isEmpty() == false) "-dirty" else "")
 
+    signingConfigs {
+        create("release") {
+            val keyProperties = readProperties(File(project.rootDir, "key.properties"))
+
+            keyAlias = keyProperties.getProperty("keyAlias")
+            keyPassword = keyProperties.getProperty("keyPassword")
+            storeFile = file(keyProperties.getProperty("storeFile"))
+            storePassword = keyProperties.getProperty("storePassword")
+        }
+    }
     buildTypes {
         getByName("debug") {
             buildOutputs.all {
@@ -62,7 +73,8 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             // Maybe proguard-android-optimize.txt in future
-            // setProguardFiles(listOf(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"))
+            setProguardFiles(listOf(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"))
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
@@ -118,4 +130,10 @@ dependencies {
     androidTestImplementation("androidx.test:rules:1.2.0")
     androidTestImplementation("androidx.test.espresso:espresso-contrib:3.2.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.2.0")
+}
+
+fun readProperties(propertiesFile: File) = Properties().apply {
+    propertiesFile.inputStream().use { fis ->
+        load(fis)
+    }
 }
